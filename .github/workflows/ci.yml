@@ -1,0 +1,41 @@
+name: parity
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  azazel:
+    name: azazel builds a Uri consumer (0.17 lane)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Zig (0.17.0-dev.892)
+        run: |
+          curl -sL "https://pkg.hexops.org/zig/zig-x86_64-linux-0.17.0-dev.892+54537285c.tar.xz" -o /tmp/zig.tar.xz
+          mkdir -p "$HOME/zigtool" && tar -xf /tmp/zig.tar.xz -C "$HOME/zigtool" --strip-components=1
+          echo "$HOME/zigtool" >> "$GITHUB_PATH"
+      - name: Install CUE
+        run: |
+          curl -sL "https://github.com/cue-lang/cue/releases/download/v0.11.1/cue_v0.11.1_linux_amd64.tar.gz" -o /tmp/cue.tgz
+          sudo tar -xzf /tmp/cue.tgz -C /usr/local/bin cue
+      - run: ./azazel/fetch.sh
+      - name: Build consumer via azazel
+        working-directory: azazel
+        run: |
+          sh gen_build_spec.sh
+          time zig build
+          ./zig-out/bin/consumer
+  zaza:
+    name: zaza builds a Uri consumer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Zig (0.17.0-dev.892)
+        run: |
+          curl -sL "https://pkg.hexops.org/zig/zig-x86_64-linux-0.17.0-dev.892+54537285c.tar.xz" -o /tmp/zig.tar.xz
+          mkdir -p "$HOME/zigtool" && tar -xf /tmp/zig.tar.xz -C "$HOME/zigtool" --strip-components=1
+          echo "$HOME/zigtool" >> "$GITHUB_PATH"
+      - run: ./zaza/fetch.sh
+      - name: Build + run consumer via zaza
+        working-directory: zaza
+        run: time zig build run
