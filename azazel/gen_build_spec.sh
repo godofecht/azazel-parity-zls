@@ -5,6 +5,16 @@ set -e
 
 cd "$(dirname "$0")"
 
+# Memoize the codegen. build_spec.zig is a pure function of the CUE inputs and
+# this script, so on an unchanged model there is nothing to regenerate: hash the
+# inputs and skip the whole cue + codegen step when it matches the last run.
+# This makes the data layer free on every rebuild but the first.
+STAMP=".build_spec.stamp"
+SIG=$(cat schema.cue project.cue export.cue gen_build_spec.sh 2>/dev/null | shasum | cut -d' ' -f1)
+if [ -f build_spec.zig ] && [ "$(cat "$STAMP" 2>/dev/null)" = "$SIG" ]; then
+    exit 0
+fi
+
 DATA=$(cue export -e build)
 
 cat > build_spec.zig <<'HEADER'
@@ -409,3 +419,6 @@ for name, m in mods.items():
 printf '};\n' >> build_spec.zig
 
 echo "Generated build_spec.zig"
+
+# Record the input signature so the next run can skip regeneration.
+printf "%s" "$SIG" > "$STAMP"

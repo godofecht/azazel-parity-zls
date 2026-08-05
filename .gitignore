@@ -4,3 +4,4 @@ zaza/vendor/
 **/zig-out/
 **/zig-pkg/
 azazel/build_spec.zig
+azazel/.build_spec.stamp
