@@ -9,6 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Cache Zig global cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/zig
+          key: zig-cache-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/build.zig.zon') }}
+          restore-keys: |
+            zig-cache-${{ runner.os }}-${{ github.job }}-
       - name: Install Zig (0.17.0-dev.892)
         run: |
           curl -sL "https://pkg.hexops.org/zig/zig-x86_64-linux-0.17.0-dev.892+54537285c.tar.xz" -o /tmp/zig.tar.xz
@@ -30,6 +37,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Cache Zig global cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/zig
+          key: zig-cache-${{ runner.os }}-${{ github.job }}-${{ hashFiles('**/build.zig.zon') }}
+          restore-keys: |
+            zig-cache-${{ runner.os }}-${{ github.job }}-
       - name: Install Zig (0.17.0-dev.892)
         run: |
           curl -sL "https://pkg.hexops.org/zig/zig-x86_64-linux-0.17.0-dev.892+54537285c.tar.xz" -o /tmp/zig.tar.xz
