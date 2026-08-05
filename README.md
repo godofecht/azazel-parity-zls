@@ -32,7 +32,15 @@ Both print `zls uri: raw=https://example.com/a/../b`.
 
 ## Comparison
 
-| Build | What it does | Config size |
-|-------|--------------|-------------|
-| azazel | imports the Uri module + a consumer, as CUE data on the 0.17 lane | `project.cue`, 14 lines |
-| zaza | imports the Uri module via the standard Zig build graph | `build.zig`,       12 lines |
+Clean-cache builds with dependencies pre-fetched, Apple Silicon, fastest of two runs.
+
+
+| Build | Clean build | Config |
+|-------|-------------|--------|
+| azazel | 3.5 s | `project.cue` — 14 lines · 435 B |
+| zaza | 3.3 s | `build.zig` — 12 lines · 734 B |
+
+The upstream's full build is not reproduced here (see the note below), so no native time is listed.
+
+**This is one of two repos where zaza's few lines undercut the CUE; zls's full build needs deps that don't compile on the available 0.17 toolchains.**
+
