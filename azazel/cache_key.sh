@@ -15,22 +15,36 @@ cd "$(dirname "$0")"
 MODEL=$(cue export -e build)
 
 SRC_HASHES=$(printf '%s' "$MODEL" | python3 -c '
-import json, sys, os
-d = json.load(sys.stdin)
-dirs = set(os.path.dirname(m["root"]) or "." for m in d["modules"].values())
-files = set()
-for base in dirs:
-    if not os.path.isdir(base):
-        # a single-file root whose dir was already added; also cover the file
+import json, sys, os, re
+# Hash only the sources this build actually compiles: walk the @import graph
+# from each module root and include only files reachable through it. This is
+# "compile only what you use" applied to the cache key — a .zig file that sits
+# under a module root'"'"'s directory but is never imported does not affect the
+# build, so it must not affect the key. Following the real import edges (instead
+# of every file in the tree) stops such files from spuriously invalidating the
+# cache. Only imports that resolve to a sibling .zig file are followed; package
+# imports (@import("std"), or a named dependency) do not end in .zig and are
+# pinned separately via build.zig.zon, so they are skipped here.
+IMPORT = re.compile(r"@import\(\s*\"([^\"]+)\"\s*\)")
+roots = [m["root"] for m in json.load(sys.stdin)["modules"].values()]
+seen, stack = set(), [os.path.normpath(r) for r in roots if os.path.isfile(r)]
+while stack:
+    f = stack.pop()
+    if f in seen:
         continue
-    for dp, _, fs in os.walk(base):
-        for f in fs:
-            if f.endswith(".zig"):
-                files.add(os.path.join(dp, f))
-for m in d["modules"].values():
-    if os.path.isfile(m["root"]):
-        files.add(m["root"])
-for f in sorted(files):
+    seen.add(f)
+    try:
+        src = open(f, "r", encoding="utf-8", errors="replace").read()
+    except OSError:
+        continue
+    base = os.path.dirname(f)
+    for spec in IMPORT.findall(src):
+        if not spec.endswith(".zig"):
+            continue
+        cand = os.path.normpath(os.path.join(base, spec))
+        if os.path.isfile(cand) and cand not in seen:
+            stack.append(cand)
+for f in sorted(seen):
     print(f)
 ' | while IFS= read -r f; do [ -f "$f" ] && shasum -a 256 "$f"; done)
 

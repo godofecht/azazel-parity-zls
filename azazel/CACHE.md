@@ -10,13 +10,27 @@ the remote-execution machinery.
 compiler**, from:
 
 - the normalized build model (`cue export`),
-- every `.zig` source under each module root (content-hashed),
+- every `.zig` source the build actually compiles, found by walking the
+  `@import` graph from each module root (content-hashed),
 - the pinned dependency identities in `build.zig.zon` (url + hash),
 - the toolchain (the model's preferred lane and the resolved `zig version`).
 
 Identical inputs produce an identical key on any machine. Over-invalidation is
 sound: a superfluous miss just rebuilds; a stale hit cannot happen, because any
 changed input changes the key.
+
+**Compile only what you use.** The source set is the `@import` graph, not every
+file under the module root's directory. A `.zig` file that sits in the tree but
+is never imported cannot affect the build, so it must not affect the key.
+Following the real import edges keeps such files from spuriously busting the
+cache. Measured across the corpus: tigerbeetle's key covered 244 in-tree files
+but the target only reaches 138 — 106 files (43%) were noise that would force a
+rebuild on any unrelated edit; libxev 40 → 27, capy 90 → 84. Only imports that
+resolve to a sibling `.zig` file are followed. A package import (`@import("std")`
+or a named dependency) is pinned through `build.zig.zon` instead, so it is
+skipped here. Zig requires the `@import` argument to be a string literal, so a
+static scan sees every edge, and conditional imports behind `if (builtin…)` are
+included regardless of branch — the scan over-includes, never under-includes.
 
 ## Skip the build on a hit — over a free store
 
